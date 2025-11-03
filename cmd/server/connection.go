@@ -3,14 +3,21 @@ package main
 import (
 	"bufio"
 	"errors"
+	"fmt"
 	"io"
 	"log/slog"
 	"net"
 	"redisclone/internal/protocol"
+	"strconv"
 	"strings"
+	"time"
 )
 
 func (s *Server) handleConnection(conn net.Conn) {
+	s.mu.Lock()
+	s.clients[conn] = true
+	s.mu.Unlock()
+
 	defer func() {
 		conn.Close()
 
@@ -87,6 +94,44 @@ func (s *Server) executeCommand(cmd *protocol.Command) string {
 		} else {
 			return protocol.WriteSimpleString("0")
 		}
+
+	case "TTL":
+		if len(cmd.Args) != 1 {
+			return protocol.Error("wrong number of arguments for 'ttl', expected 1")
+		}
+
+		key := cmd.Args[0]
+		value, exists := s.storage.Get(key)
+
+		if !exists {
+			return protocol.WriteSimpleString("-2")
+		}
+
+		if value.ExpiresAt == nil {
+			return protocol.WriteSimpleString("-1")
+		}
+
+		ttl := int64(time.Until(*value.ExpiresAt).Seconds())
+		if ttl <= 0 {
+			return protocol.WriteSimpleString("-2")
+		}
+
+		return fmt.Sprintf(":%d\r\n", ttl)
+
+	case "SETEX":
+		if len(cmd.Args) != 3 {
+			return protocol.Error("wrong number of arguments for 'setex', expected 3")
+		}
+
+		key := cmd.Args[0]
+		duration, err := strconv.Atoi(cmd.Args[1])
+		if err != nil {
+			return protocol.Error("invalid expire time")
+		}
+
+		value := cmd.Args[2]
+		s.storage.SetEx(key, value, time.Duration(duration)*time.Second)
+		return protocol.OK()
 
 	case "PING":
 		if len(cmd.Args) == 0 {

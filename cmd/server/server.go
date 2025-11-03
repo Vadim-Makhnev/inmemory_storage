@@ -52,9 +52,6 @@ func (s *Server) Start() error {
 				continue
 			}
 		}
-		s.mu.Lock()
-		s.clients[conn] = true
-		s.mu.Unlock()
 
 		go s.handleConnection(conn)
 	}

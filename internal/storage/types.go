@@ -1,5 +1,8 @@
 package storage
 
+import "time"
+
 type Value struct {
-	Data string
+	Data      string
+	ExpiresAt *time.Time
 }
