@@ -158,16 +158,16 @@ func (s *Server) executeCommand(cmd *protocol.Command) string {
 		value, exists := s.storage.Get(key)
 
 		if !exists {
-			return protocol.WriteSimpleString("-2")
+			return protocol.Integer(-2)
 		}
 
 		if value.ExpiresAt == nil {
-			return protocol.WriteSimpleString("-1")
+			return protocol.Integer(-1)
 		}
 
 		ttl := int64(time.Until(*value.ExpiresAt).Seconds())
 		if ttl <= 0 {
-			return protocol.WriteSimpleString("-2")
+			return protocol.Integer(-2)
 		}
 
 		s.logger.WithFields(logrus.Fields{
