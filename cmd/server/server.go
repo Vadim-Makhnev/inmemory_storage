@@ -1,10 +1,11 @@
 package main
 
 import (
-	"log/slog"
 	"net"
 	"redisclone/internal/storage"
 	"sync"
+
+	"github.com/sirupsen/logrus"
 )
 
 type Server struct {
@@ -12,15 +13,17 @@ type Server struct {
 	storage *storage.Storage
 	mu      sync.RWMutex
 	clients map[net.Conn]bool
+	logger  *logrus.Logger
 	closeCh chan struct{}
 	doneCh  chan struct{}
 }
 
-func NewServer(addr string) *Server {
+func NewServer(addr string, logger *logrus.Logger) *Server {
 	return &Server{
 		addr:    addr,
 		storage: storage.NewStorage(),
 		clients: make(map[net.Conn]bool),
+		logger:  logger,
 		closeCh: make(chan struct{}),
 		doneCh:  make(chan struct{}),
 	}
@@ -33,7 +36,7 @@ func (s *Server) Start() error {
 	}
 	defer l.Close()
 
-	slog.Info("Server started", "addr", s.addr)
+	s.logger.WithField("addr", s.addr).Info("Server started")
 
 	go func() {
 		<-s.closeCh
@@ -48,7 +51,7 @@ func (s *Server) Start() error {
 				close(s.doneCh)
 				return nil
 			default:
-				slog.Error("accept error", "err", err)
+				s.logger.WithError(err).Error("accept error")
 				continue
 			}
 		}

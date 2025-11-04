@@ -3,22 +3,34 @@ package main
 import (
 	"context"
 	"flag"
-	"log"
-	"log/slog"
+	"fmt"
 	"os"
 	"os/signal"
 	"syscall"
 	"time"
+
+	"github.com/sirupsen/logrus"
 )
 
 func main() {
-	addr := flag.String("addr", ":4000", "address where server should work")
+	addr := flag.String("addr", ":4000", "server address to listen on")
+	environment := flag.String("environment", "debug", "logger level")
+	flag.Parse()
 
-	s := NewServer(*addr)
+	level, err := logrus.ParseLevel(*environment)
+	if err != nil {
+		fmt.Printf("Error parsing log level: %v\n", err)
+		os.Exit(1)
+	}
+
+	logger := logrus.New()
+	logger.SetLevel(level)
+
+	s := NewServer(*addr, logger)
 
 	go func() {
 		if err := s.Start(); err != nil {
-			log.Fatal(err)
+			s.logger.Fatal(err)
 		}
 	}()
 
@@ -26,7 +38,7 @@ func main() {
 	signal.Notify(c, syscall.SIGINT, syscall.SIGTERM)
 	<-c
 
-	slog.Info("Shutdown signal received")
+	s.logger.Info("Shutdown signal received")
 
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
@@ -39,8 +51,8 @@ func main() {
 
 	select {
 	case <-done:
-		slog.Info("Graceful shutdown completed")
+		s.logger.Info("Graceful shutdown completed")
 	case <-ctx.Done():
-		slog.Warn("Shutdown timeout, forcing exit")
+		s.logger.Warn("Shutdown timeout, forcing exit")
 	}
 }

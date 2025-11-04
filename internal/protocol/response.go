@@ -24,3 +24,7 @@ func NullBulk() string {
 func WriteSimpleString(msg string) string {
 	return fmt.Sprintf("+%s\r\n", msg)
 }
+
+func Integer(n int64) string {
+	return fmt.Sprintf(":%d\r\n", n)
+}
