@@ -19,6 +19,14 @@ type Server struct {
 }
 
 func NewServer(addr string, logger *logrus.Logger) *Server {
+	if logger == nil {
+		logger = logrus.New()
+		logger.SetLevel(logrus.ErrorLevel)
+		logger.SetFormatter(&logrus.TextFormatter{
+			DisableTimestamp: true,
+		})
+	}
+
 	return &Server{
 		addr:    addr,
 		storage: storage.NewStorage(),
